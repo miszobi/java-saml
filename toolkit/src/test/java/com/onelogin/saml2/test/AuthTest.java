@@ -965,6 +965,33 @@ public class AuthTest {
 
 	/**
 	 * Tests the login method of Auth
+	 * Case: Login with empty relayState - no relayState appended
+	 *
+	 * @throws SettingsException
+	 * @throws IOException
+	 * @throws URISyntaxException
+	 *
+	 * @see com.onelogin.saml2.Auth#login
+	 */
+	@Test
+	public void testLoginWithoutRelayState() throws IOException, SettingsException, URISyntaxException {
+		HttpServletRequest request = mock(HttpServletRequest.class);
+		HttpServletResponse response = mock(HttpServletResponse.class);
+		when(request.getScheme()).thenReturn("http");
+		when(request.getServerPort()).thenReturn(8080);
+		when(request.getServerName()).thenReturn("localhost");
+		when(request.getRequestURI()).thenReturn("/initial.jsp");
+
+		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.my.properties").build();
+		settings.setAuthnRequestsSigned(false);
+
+		Auth auth = new Auth(settings, request, response);
+		auth.login("");
+		verify(response).sendRedirect(matches("https:\\/\\/pitbulk.no-ip.org\\/simplesaml\\/saml2\\/idp\\/SSOService.php\\?SAMLRequest=(.)*"));
+	}
+
+	/**
+	 * Tests the login method of Auth
 	 * Case: Signed Login but no sp key
 	 *
 	 * @throws SettingsException

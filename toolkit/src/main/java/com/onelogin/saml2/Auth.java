@@ -213,7 +213,8 @@ public class Auth {
 	 * Initiates the SSO process.
 	 *
 	 * @param returnTo
-	 *				The target URL the user should be returned to after login.
+	 *				The target URL the user should be returned to after login (relayState).
+	 *				Will be a self-routed URL when null, or not be appended at all when an empty string is provided
 	 * @param forceAuthn
 	 *				When true the AuthNRequest will set the ForceAuthn='true'
 	 * @param isPassive
@@ -237,7 +238,10 @@ public class Auth {
 		} else {
 			relayState = returnTo;
 		}
-		parameters.put("RelayState", relayState);
+
+		if (!relayState.isEmpty()) {
+			parameters.put("RelayState", relayState);
+		}
 
 		if (settings.getAuthnRequestsSigned()) {
 			String sigAlg = settings.getSignatureAlgorithm();
@@ -267,7 +271,8 @@ public class Auth {
 	 * Initiates the SSO process.
 	 *
 	 * @param returnTo 
-     *				The target URL the user should be returned to after login.
+     *				The target URL the user should be returned to after login (relayState).
+	 *				Will be a self-routed URL when null, or not be appended at all when an empty string is provided
      *
 	 * @throws IOException
 	 */
