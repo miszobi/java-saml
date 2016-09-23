@@ -4,6 +4,7 @@ package com.onelogin.saml2.test;
 import static java.util.Collections.singletonMap;
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.startsWith;
 import static org.hamcrest.Matchers.contains;
 import static org.junit.Assert.assertEquals;
@@ -38,6 +39,8 @@ import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
 import com.onelogin.saml2.util.Constants;
 import com.onelogin.saml2.util.Util;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Matchers;
 
 public class AuthTest {
 
@@ -104,7 +107,7 @@ public class AuthTest {
 		assertEquals(settings.getIdpEntityId(), auth.getSettings().getIdpEntityId());
 		assertEquals(settings.getSpEntityId(), auth.getSettings().getSpEntityId());
 	}
-	
+
 	/**
 	 * Tests the constructor of Auth
 	 * Case: filename, HttpServletRequest and HttpServletResponse provided
@@ -473,8 +476,8 @@ public class AuthTest {
 		when(request.getSession()).thenReturn(session);
 
 		String samlRequestEncoded = Util.getFileAsString("data/logout_requests/logout_request_deflated.xml.base64");
-		when(request.getParameterMap()).thenReturn(singletonMap("SAMLRequest", new String[]{samlRequestEncoded}));		
-		
+		when(request.getParameterMap()).thenReturn(singletonMap("SAMLRequest", new String[]{samlRequestEncoded}));
+
 		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.min.properties").build();
 		Auth auth = new Auth(settings, request, response);
 		assertFalse(auth.isAuthenticated());
@@ -502,7 +505,7 @@ public class AuthTest {
 		when(request.getSession()).thenReturn(session);
 
 		String samlRequestEncoded = Util.getFileAsString("data/logout_requests/logout_request_deflated.xml.base64");
-		when(request.getParameterMap()).thenReturn(singletonMap("SAMLRequest", new String[]{samlRequestEncoded}));		
+		when(request.getParameterMap()).thenReturn(singletonMap("SAMLRequest", new String[]{samlRequestEncoded}));
 		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.min.properties").build();
 		Auth auth = new Auth(settings, request, response);
 		assertFalse(auth.isAuthenticated());
@@ -535,8 +538,8 @@ public class AuthTest {
 		paramsAsArray.put("RelayState", new String[]{relayState});
 		when(request.getParameterMap()).thenReturn(paramsAsArray);
 		when(request.getParameter("RelayState")).thenReturn(relayState);
-		
-		
+
+
 		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.all.properties").build();
 		settings.setWantMessagesSigned(false);
 		settings.setLogoutResponseSigned(true);
@@ -548,10 +551,10 @@ public class AuthTest {
 		verify(session, times(1)).invalidate();
 		assertTrue(auth.getErrors().isEmpty());
 	}
-	
+
 	/**
 	 * Tests the processSLO methods of Auth
-	 * Case: process LogoutRequest invalid 
+	 * Case: process LogoutRequest invalid
 	 *
 	 * @throws Exception
 	 *
@@ -572,7 +575,7 @@ public class AuthTest {
 		Auth auth = new Auth(settings, request, response);
 		assertFalse(auth.isAuthenticated());
 		assertTrue(auth.getErrors().isEmpty());
-		auth.processSLO();		
+		auth.processSLO();
 		verify(session, times(0)).invalidate();
 		assertFalse(auth.getErrors().isEmpty());
 		assertTrue(auth.getErrors().contains("invalid_logout_request"));
@@ -730,7 +733,7 @@ public class AuthTest {
 		expectedErrors = new ArrayList<String>();
 		expectedErrors.add("invalid_response");
 		assertEquals(expectedErrors, auth2.getErrors());
-		assertThat(auth2.getLastErrorReason(), containsString("The response was received at"));		
+		assertThat(auth2.getLastErrorReason(), containsString("The response was received at"));
 
 		samlResponseEncoded = Util.getFileAsString("data/responses/valid_response.xml.base64");
 		when(request.getParameterMap()).thenReturn(singletonMap("SAMLResponse", new String[]{samlResponseEncoded}));
@@ -924,7 +927,7 @@ public class AuthTest {
 		HttpServletResponse response = mock(HttpServletResponse.class);
 		when(request.getScheme()).thenReturn("http");
 		when(request.getServerPort()).thenReturn(8080);
-		when(request.getServerName()).thenReturn("localhost");		
+		when(request.getServerName()).thenReturn("localhost");
 		when(request.getRequestURI()).thenReturn("/initial.jsp");
 
 		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.my.properties").build();
@@ -951,7 +954,7 @@ public class AuthTest {
 		HttpServletResponse response = mock(HttpServletResponse.class);
 		when(request.getScheme()).thenReturn("http");
 		when(request.getServerPort()).thenReturn(8080);
-		when(request.getServerName()).thenReturn("localhost");		
+		when(request.getServerName()).thenReturn("localhost");
 		when(request.getRequestURI()).thenReturn("/initial.jsp");
 
 		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.my.properties").build();
@@ -987,7 +990,10 @@ public class AuthTest {
 
 		Auth auth = new Auth(settings, request, response);
 		auth.login("");
-		verify(response).sendRedirect(matches("https:\\/\\/pitbulk.no-ip.org\\/simplesaml\\/saml2\\/idp\\/SSOService.php\\?SAMLRequest=(.)*"));
+		final ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+		verify(response).sendRedirect(urlCaptor.capture());
+		assertThat(urlCaptor.getValue(), startsWith("https://pitbulk.no-ip.org/simplesaml/saml2/idp/SSOService.php?SAMLRequest="));
+		assertThat(urlCaptor.getValue(), not(containsString("&RelayState=")));
 	}
 
 	/**
@@ -1105,6 +1111,37 @@ public class AuthTest {
 		auth.logout(relayState);
 
 		verify(response).sendRedirect(matches("https:\\/\\/pitbulk.no-ip.org\\/simplesaml\\/saml2\\/idp\\/SingleLogoutService.php\\?SAMLRequest=(.)*&RelayState=http%3A%2F%2Flocalhost%3A8080%2Fexpected.jsp"));
+	}
+
+	/**
+	 * Tests the logout method of Auth
+	 * Case: Logout with empty RelayState - no RelayState appended
+	 *
+	 * @throws IOException
+	 * @throws SettingsException
+	 * @throws XMLEntityException
+	 *
+	 * @see com.onelogin.saml2.Auth#logout
+	 */
+	@Test
+	public void testLogoutWithoutRelayState() throws IOException, SettingsException, XMLEntityException {
+		HttpServletRequest request = mock(HttpServletRequest.class);
+		HttpServletResponse response = mock(HttpServletResponse.class);
+		when(request.getScheme()).thenReturn("http");
+		when(request.getServerPort()).thenReturn(8080);
+		when(request.getServerName()).thenReturn("localhost");
+		when(request.getRequestURI()).thenReturn("/initial.jsp");
+
+		Saml2Settings settings = new SettingsBuilder().fromFile("config/config.my.properties").build();
+		settings.setLogoutRequestSigned(false);
+
+		Auth auth = new Auth(settings, request, response);
+		auth.logout("");
+
+		final ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+		verify(response).sendRedirect(urlCaptor.capture());
+		assertThat(urlCaptor.getValue(), startsWith("https://pitbulk.no-ip.org/simplesaml/saml2/idp/SingleLogoutService.php?SAMLRequest="));
+		assertThat(urlCaptor.getValue(), not(containsString("&RelayState=")));
 	}
 
 	/**

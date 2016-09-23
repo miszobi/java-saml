@@ -272,7 +272,7 @@ public class Auth {
 	 *
 	 * @param returnTo 
      *				The target URL the user should be returned to after login (relayState).
-	 *				Will be a self-routed URL when null, or not be appended at all when an empty string is provided
+	 *				Will be a self-routed URL when null, or not be appended at all when an empty string is provided.
      *
 	 * @throws IOException
 	 */
@@ -284,7 +284,8 @@ public class Auth {
 	 * Initiates the SLO process.
 	 *
 	 * @param returnTo 
-     *				The target URL the user should be returned to after logout.
+     *				The target URL the user should be returned to after logout (relayState).
+	 *				Will be a self-routed URL when null, or not be appended at all when an empty string is provided
 	 * @param nameId 
      *				The NameID that will be set in the LogoutRequest.
 	 * @param sessionIndex 
@@ -301,13 +302,15 @@ public class Auth {
 		parameters.put("SAMLRequest", samlLogoutRequest);
 
 		String relayState;
-		if (returnTo == null || returnTo.isEmpty()) {
+		if (returnTo == null) {
 			relayState = ServletUtils.getSelfRoutedURLNoQuery(request);
 		} else {
 			relayState = returnTo;
 		}
 
-		parameters.put("RelayState", relayState);
+		if (!relayState.isEmpty()) {
+			parameters.put("RelayState", relayState);
+		}
 
 		if (settings.getLogoutRequestSigned()) {
 			String sigAlg = settings.getSignatureAlgorithm();
@@ -336,8 +339,9 @@ public class Auth {
 	/**
 	 * Initiates the SLO process.
 	 *
-	 * @param returnTo 
-     *				The target URL the user should be returned to after logout. 
+	 * @param returnTo
+	 *				The target URL the user should be returned to after logout (relayState).
+	 *				Will be a self-routed URL when null, or not be appended at all when an empty string is provided
 	 *
 	 * @throws IOException
 	 * @throws XMLEntityException
